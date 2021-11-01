@@ -29,45 +29,66 @@ type Triangle struct {
 
 // GameWorld Contains parameters relating to the drawing surface.
 type GameWorld struct {
-	Title        string
-	ScreenWidth  float64
-	ScreenHeight float64
-	CentreX      float64
-	CentreY      float64
-	Radius       float64
-	Thickness    float64
+	Title        string  // The caption of the application window.
+	ScreenWidth  float64 // The width of the window in pixels.
+	ScreenHeight float64 // The height of the window in pixels.
+	CentreX      float64 // The x coordinate centre of the superscribed circle.
+	CentreY      float64 // The y coordinate centre of the superscribed circle.
+	Radius       float64 // The radius of the superscribed circle.
+	Thickness    float64 // The thickness of the circle and inscribed triangle.
+	Margin       float64 // The gap between the edge of the window and the circle.
+	PointCount   int     // The number of points to collect before drawing to the screen.
 }
 
 var world GameWorld
 var triangle Triangle
 
+// GetCircleRadius Determines the radius for the circle based
+// on the width and height of the application window.
+func (w *GameWorld) GetCircleRadius() float64 {
+	if w.ScreenWidth > w.ScreenHeight {
+		return (w.ScreenWidth - w.Margin) / 2
+	}
+
+	return (w.ScreenHeight - w.Margin) / 2
+}
+
 // InitialiseWorld Called once before the main application loop.
 func (w *GameWorld) InitialiseWorld() pixelgl.WindowConfig {
 	// Set the parameters for the application.
 	w.Title = "Playing with Golang"
-	w.ScreenWidth = 1600
+	w.ScreenWidth = 1200
 	w.ScreenHeight = 1200
-	w.CentreX = 800
-	w.CentreY = 600
-	w.Radius = 500
-	w.Thickness = 2
+	w.CentreX = w.ScreenWidth / 2
+	w.CentreY = w.ScreenHeight / 2
+	w.Margin = 40
+	w.Radius = w.GetCircleRadius()
+	w.Thickness = 6
+	w.PointCount = 1000
 
 	// Configure the main application window.
 	cfg := pixelgl.WindowConfig{
 		Title:  world.Title,
 		Bounds: pixel.R(0, 0, world.ScreenWidth, world.ScreenHeight),
-		VSync:  true,
+		VSync:  false,
 	}
 
 	return cfg
 }
 
-func (t *Triangle) DrawPoint(imd *imdraw.IMDraw, init bool) {
-
+// DrawPoint Draws the next point inside the triangle.
+func (t *Triangle) DrawPoint(imd *imdraw.IMDraw) {
+	// Draw a rectangle at the next calculated point.
+	imd.Color = colornames.Blue
+	imd.Push(pixel.V(t.newX-t.thickness/2, t.newY-t.thickness/2))
+	imd.Push(pixel.V(t.newX+t.thickness/2, t.newY+t.thickness/2))
+	imd.Rectangle(0)
 }
 
+// GetNextPoint Calculates the next point to draw by doing the following:
+// - Select a random vertex of the outer triangle.
+// - Determine the midpoint on the line between the chosen vertex and the current point.
 func (t *Triangle) GetNextPoint(imd *imdraw.IMDraw, init bool) {
-
 	// Choose a random vertex. Top = 0, Right = 1, Left = 2.
 	t.ChosenVertex = rand.Intn(3)
 
@@ -84,19 +105,16 @@ func (t *Triangle) GetNextPoint(imd *imdraw.IMDraw, init bool) {
 			t.ChosenY = t.cy
 		}
 
+		// Calculate the coordinates of the next point.
 		t.newX = t.ChosenX + (t.newX-t.ChosenX)/2
 		t.newY = t.ChosenY + (t.newY-t.ChosenY)/2
 
 	} else {
-		t.newX = 900
-		t.newY = 700
+		// Give the first point an arbitrary position (this does not currently
+		//check if the point likes within the triangle or not).
+		t.newX = world.ScreenWidth/2 + float64(rand.Intn(100)-200)
+		t.newY = world.ScreenHeight/2 + float64(rand.Intn(100)-200)
 	}
-
-	// Draw a test rectangle.
-	imd.Color = colornames.Blue
-	imd.Push(pixel.V(t.newX-t.thickness/2, t.newY-t.thickness/2))
-	imd.Push(pixel.V(t.newX+t.thickness/2, t.newY+t.thickness/2))
-	imd.Rectangle(0)
 }
 
 // StoreTrianglePoints Stores the coordinates for each vertex of the inscribed triangle.
@@ -127,11 +145,11 @@ func DrawInscribedTriangle(imd *imdraw.IMDraw) {
 	imd.Push(pixel.V(triangle.ax, triangle.ay))
 	imd.Push(pixel.V(triangle.bx, triangle.by))
 	imd.Push(pixel.V(triangle.cx, triangle.cy))
-	imd.Polygon(1)
+	imd.Polygon(world.Thickness)
 }
 
 func run() {
-
+	ticker := 0
 	initialised := false
 
 	// Prepare the application for rendering.
@@ -143,23 +161,32 @@ func run() {
 	}
 
 	imd := imdraw.New(nil)
+	//last := time.Now()
 
+	// This is the main application loop that
+	// continues until the application window is closed.
 	for !win.Closed() {
-		win.Clear(colornames.Aliceblue)
-
 		// Draw a circle with an equilateral inscribed triangle.
 		if !initialised {
+			win.Clear(colornames.Aliceblue)
 			DrawInscribedTriangle(imd)
+			initialised = true
 		}
 
+		// Get the next point and draw it to the imdraw surface.
 		triangle.GetNextPoint(imd, initialised)
-		initialised = true
+		triangle.DrawPoint(imd)
+		ticker++
 
-		imd.Draw(win)
-		win.Update()
+		// Only redraw the application screen every ticker cycles.
+		if ticker%world.PointCount == 0 {
+			imd.Draw(win)
+			win.Update()
+		}
 	}
 }
 
+// main The application's entry point.
 func main() {
 	pixelgl.Run(run)
 }
