@@ -57,14 +57,14 @@ func (w *GameWorld) GetCircleRadius() float64 {
 func (w *GameWorld) InitialiseWorld() pixelgl.WindowConfig {
 	// Set the parameters for the application.
 	w.Title = "Playing with Golang"
-	w.ScreenWidth = 1200
-	w.ScreenHeight = 1200
+	w.ScreenWidth = 1000
+	w.ScreenHeight = 1000
 	w.CentreX = w.ScreenWidth / 2
 	w.CentreY = w.ScreenHeight / 2
 	w.Margin = 40
 	w.Radius = w.GetCircleRadius()
 	w.Thickness = 6
-	w.PointCount = 1000
+	w.PointCount = 10 // How many points to create before displaying them.
 
 	// Configure the main application window.
 	cfg := pixelgl.WindowConfig{
@@ -88,7 +88,7 @@ func (t *Triangle) DrawPoint(imd *imdraw.IMDraw) {
 // GetNextPoint Calculates the next point to draw by doing the following:
 // - Select a random vertex of the outer triangle.
 // - Determine the midpoint on the line between the chosen vertex and the current point.
-func (t *Triangle) GetNextPoint(imd *imdraw.IMDraw, init bool) {
+func (t *Triangle) GetNextPoint(init bool) {
 	// Choose a random vertex. Top = 0, Right = 1, Left = 2.
 	t.ChosenVertex = rand.Intn(3)
 
@@ -127,7 +127,7 @@ func (t *Triangle) StoreTrianglePoints() {
 	t.by = world.CentreY - world.Radius*sinVal
 	t.cx = world.CentreX - world.Radius*cosVal
 	t.cy = t.by
-	t.thickness = 2
+	t.thickness = 1
 }
 
 // DrawInscribedTriangle This function draws a circle in the
@@ -174,7 +174,7 @@ func run() {
 		}
 
 		// Get the next point and draw it to the imdraw surface.
-		triangle.GetNextPoint(imd, initialised)
+		triangle.GetNextPoint(initialised)
 		triangle.DrawPoint(imd)
 		ticker++
 
@@ -183,6 +183,9 @@ func run() {
 			imd.Draw(win)
 			win.Update()
 		}
+
+		// time.Sleep(10 * time.Millisecond)
+
 	}
 }
 
